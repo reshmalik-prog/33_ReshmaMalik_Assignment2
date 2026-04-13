@@ -1,45 +1,96 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report, accuracy_score
-
-# 1. Load Data
-df = pd.read_csv('data/solarglass_tweets.csv')
-
-# 2. Simple Preprocessing (Lowercasing and cleaning)
 import re
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import classification_report
+import warnings
+warnings.filterwarnings("ignore")
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import accuracy_score
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+
+# 1. Load data
+data = pd.read_csv('/content/SolarGlass Smartphone Dataset.csv')
+
+
+# 2. PREPROCESSING
 def clean_text(text):
     text = text.lower()
     text = re.sub(r'[^\w\s]', '', text) # Remove punctuation
     return text
 
-df['cleaned_text'] = df['Tweet_Text'].apply(clean_text)
+data['cleaned_text'] = data['Tweet_Text'].apply(clean_text)
 
-# 3. Data Splitting (80% Train, 20% Test)
-X_train, X_test, y_train, y_test = train_test_split(
-    df['cleaned_text'], df['Label'], test_size=0.20, random_state=42
-)
+# 3. SPLITTING DATA (80% Train, 20% Test)
+X = data['cleaned_text']
+y = data['Label']
 
-# 4. Vectorization
-vectorizer = TfidfVectorizer()
-X_train_tfidf = vectorizer.fit_transform(X_train)
-X_test_tfidf = vectorizer.transform(X_test)
+# Fixed random_state ensures you get consistent results every time you run it
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# 5. Classifier 1: Naive Bayes
-nb_model = MultinomialNB()
-nb_model.fit(X_train_tfidf, y_train)
-nb_preds = nb_model.predict(X_test_tfidf)
+# 4. VECTORIZATION
+vectorizer = CountVectorizer()
+X_train_vec = vectorizer.fit_transform(X_train)
+X_test_vec = vectorizer.transform(X_test)
 
-# 6. Classifier 2: Logistic Regression
-lr_model = LogisticRegression()
-lr_model.fit(X_train_tfidf, y_train)
-lr_preds = lr_model.predict(X_test_tfidf)
+# 5. MODEL TRAINING & EVALUATION
 
-# 7. Results
+# Naive Bayes
+nb = MultinomialNB()
+nb.fit(X_train_vec, y_train)
+nb_pred = nb.predict(X_test_vec)
 print("--- Naive Bayes Report ---")
-print(classification_report(y_test, nb_preds))
+print(classification_report(y_test, nb_pred))
 
-print("\n--- Logistic Regression Report ---")
-print(classification_report(y_test, lr_preds))
+# Logistic Regression
+lr = LogisticRegression()
+lr.fit(X_train_vec, y_train)
+lr_pred = lr.predict(X_test_vec)
+print("--- Logistic Regression Report ---")
+print(classification_report(y_test, lr_pred))
+
+
+# SVM
+svm = SVC()
+svm.fit(X_train_vec, y_train)
+svm_pred = svm.predict(X_test_vec)
+print("--- SVM Report ---")
+print(classification_report(y_test, svm_pred))
+
+
+# 6. GRAPHS AND VISUALIZATIONS
+
+# Confusion Matrix for the best model (Logistic Regression)
+cm = confusion_matrix(y_test, lr_pred)
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[-1, 0, 1])
+disp.plot(cmap='Blues')
+plt.title("Confusion Matrix - Logistic Regression")
+plt.show()
+
+# Model Accuracy Comparison Graph
+models = ['Naive Bayes', 'Logistic Regression', 'SVM']
+
+# Calculating actual accuracy from the predictions
+accuracies = [
+    accuracy_score(y_test, nb_pred),
+    accuracy_score(y_test, lr_pred),
+    accuracy_score(y_test, svm_pred)
+]
+
+plt.figure(figsize=(8, 5))
+sns.barplot(x=models, y=accuracies, palette='viridis')
+plt.title("Model Accuracy Comparison")
+plt.ylim(0, 1)
+plt.ylabel("Accuracy Score")
+plt.show()
+
+# Sentiment Distribution
+plt.figure(figsize=(6, 4))
+data['Label'].value_counts().sort_index().plot(kind='bar', color=['red', 'gray', 'green'])
+plt.title("Sentiment Distribution (Dataset)")
+plt.xticks(ticks=[0, 1, 2], labels=['Negative (-1)', 'Neutral (0)', 'Positive (1)'], rotation=0)
+plt.show()
