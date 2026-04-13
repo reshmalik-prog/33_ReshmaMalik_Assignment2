@@ -24,6 +24,7 @@ Insights:
 - Best Model: Logistic Regression performed best with 80% accuracy.
 - It achieved a perfect Precision (1.00) for Positive sentiments, meaning it never falsely labeled a neutral/negative tweet as positive.
 - All models showed high recall for Negative sentiments, effectively identifying customer complaints.
+- **View the full technical report:** [Download Sentiment Analysis Report PDF](./report/Sentiment_Analysis_Report.pdf)
 
 ## (6) How to Run
 ```bash
